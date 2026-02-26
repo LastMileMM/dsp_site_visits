@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kooner Site Visit Coordinator</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a25;
+            --accent-green: #00ff88;
+            --accent-red: #ff4757;
+            --accent-orange: #ffa502;
+            --accent-blue: #3742fa;
+            --accent-purple: #a855f7;
+            --accent-cyan: #00d4ff;
+            --accent-yellow: #ffd93d;
+            --text-primary: #ffffff;
+            --text-secondary: #8b8b9a;
+            --text-muted: #4a4a5a;
+            --border-color: #2a2a3a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Space Grotesk', sans-serif; background: var(--bg-dark); color: var(--text-primary); min-height: 100vh; }
+        .bg-grid { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(55,66,250,0.03) 1px, transparent 1px), linear-gradient(90deg,rgba(55,66,250,0.03) 1px, transparent 1px); background-size: 50px 50px; pointer-events: none; z-index: 0; }
+
+        /* ── VIEW SWITCHER ──────────────────────────────────────────────── */
+        .view-switcher { position: fixed; top: 20px; right: 24px; z-index: 100; display: flex; gap: 6px; }
+        .view-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.2s; }
+        .view-btn:hover, .view-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+
+        /* ── VIEWS ──────────────────────────────────────────────────────── */
+        .view { display: none; position: relative; z-index: 1; }
+        .view.active { display: block; }
+
+        /* ══════════════════════════════════════════════════════════════════
+           DSP FORM VIEW
+        ══════════════════════════════════════════════════════════════════ */
+        .form-view { max-width: 700px; margin: 0 auto; padding: 60px 24px; }
+        .form-header { text-align: center; margin-bottom: 48px; }
+        .form-logo { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.2em; color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 16px; }
+        .form-header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 12px; }
+        .form-header h1 span { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .form-header p { color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+        .form-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 36px; }
+        .form-section { margin-bottom: 28px; }
+        .form-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-cyan); margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label { font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; }
+        .form-label span { color: var(--accent-red); margin-left: 2px; }
+        .form-input, .form-select, .form-textarea {
+            background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 10px;
+            color: var(--text-primary); padding: 12px 14px; font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem; transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(55,66,250,0.15);
+        }
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8b9a' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+        .form-select option { background: var(--bg-card); }
+        .form-textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+
+        /* Date picker area */
+        .date-picker-area { background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; }
+        .mini-cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .mini-cal-title { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-primary); }
+        .mini-cal-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .mini-cal-btn:hover { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+        .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .mini-cal-header { text-align: center; font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; padding: 4px; font-weight: 600; }
+        .mini-cal-day {
+            text-align: center; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;
+            padding: 7px 2px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+            border: 1px solid transparent; user-select: none;
+        }
+        .mini-cal-day:hover:not(.other-month):not(.past):not(.blocked) { background: rgba(55,66,250,0.2); border-color: var(--accent-blue); color: white; }
+        .mini-cal-day.selected { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .mini-cal-day.other-month { color: var(--text-muted); cursor: default; }
+        .mini-cal-day.past { color: var(--text-muted); cursor: not-allowed; opacity: 0.4; }
+        .mini-cal-day.today { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .mini-cal-day.today.selected { background: var(--accent-blue); color: white; }
+
+        .selected-dates { margin-top: 14px; }
+        .selected-dates-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'JetBrains Mono', monospace; }
+        .selected-dates-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+        .date-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(55,66,250,0.2); border: 1px solid var(--accent-blue); color: var(--accent-cyan); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; }
+        .date-chip-remove { cursor: pointer; color: var(--text-muted); font-size: 1rem; line-height: 1; transition: color 0.15s; }
+        .date-chip-remove:hover { color: var(--accent-red); }
+        .date-placeholder { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+
+        /* Preference toggles */
+        .pref-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .pref-toggle { display: flex; align-items: center; gap: 8px; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; }
+        .pref-toggle input { display: none; }
+        .pref-toggle.checked { background: rgba(55,66,250,0.15); border-color: var(--accent-blue); }
+        .pref-toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; transition: background 0.15s; }
+        .pref-toggle.checked .pref-toggle-dot { background: var(--accent-blue); }
+        .pref-toggle-label { font-size: 0.82rem; color: var(--text-secondary); }
+        .pref-toggle.checked .pref-toggle-label { color: var(--text-primary); }
+
+        .form-submit { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border: none; border-radius: 10px; color: white; font-size: 1rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif; cursor: pointer; transition: opacity 0.2s, transform 0.1s; margin-top: 8px; }
+        .form-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+        .form-submit:active { transform: translateY(0); }
+
+        .success-state { display: none; text-align: center; padding: 48px 24px; }
+        .success-icon { font-size: 3rem; margin-bottom: 16px; }
+        .success-state h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; color: var(--accent-green); }
+        .success-state p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* ══════════════════════════════════════════════════════════════════
+           INTERNAL COORDINATOR VIEW
+        ══════════════════════════════════════════════════════════════════ */
+        .coord-view { max-width: 1500px; margin: 0 auto; padding: 28px 24px; }
+        .coord-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .coord-header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; background: linear-gradient(135deg, #fff 0%, var(--text-secondary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .coord-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
+        .coord-actions { display: flex; gap: 8px; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; border: none; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; }
+        .btn-primary { background: var(--accent-blue); color: white; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); }
+        .btn-outline:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+
+        .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+        .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 20px; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; }
+        .kpi-card.blue::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
+        .kpi-card.green::before { background: linear-gradient(90deg, var(--accent-green), #00cc6a); }
+        .kpi-card.orange::before { background: linear-gradient(90deg, var(--accent-orange), #ff6b00); }
+        .kpi-card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .kpi-card.yellow::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange)); }
+        .kpi-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .kpi-value { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .kpi-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+        .coord-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 22px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .card-title { font-size: 1rem; font-weight: 600; }
+        .card-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; }
+        .badge-blue { background: rgba(55,66,250,0.2); color: var(--accent-blue); }
+        .badge-green { background: rgba(0,255,136,0.2); color: var(--accent-green); }
+        .badge-orange { background: rgba(255,165,2,0.2); color: var(--accent-orange); }
+
+        /* Response table */
+        .response-table { width: 100%; border-collapse: collapse; }
+        .response-table th { text-align: left; padding: 10px 10px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .response-table td { padding: 14px 10px; font-size: 0.88rem; border-bottom: 1px solid rgba(42,42,58,0.5); vertical-align: middle; }
+        .response-table tr:hover td { background: rgba(55,66,250,0.04); }
+        .response-table tr:last-child td { border-bottom: none; }
+
+        .dsp-code { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.95rem; }
+        .station-tag { background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 8px; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); display: inline-block; }
+        .availability-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+        .avail-chip { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+        .avail-chip.available { background: rgba(0,255,136,0.12); color: var(--accent-green); }
+        .avail-chip.conflict { background: rgba(255,165,2,0.12); color: var(--accent-orange); text-decoration: line-through; opacity: 0.6; }
+
+        .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
+        .status-pill.pending { background: rgba(255,165,2,0.12); color: var(--accent-orange); }
+        .status-pill.scheduled { background: rgba(0,255,136,0.12); color: var(--accent-green); }
+        .status-pill.needs-followup { background: rgba(255,71,87,0.12); color: var(--accent-red); }
+        .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+        .action-btn { padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-family: 'Space Grotesk', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-secondary); }
+        .action-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+        .action-btn.schedule { border-color: var(--accent-green); color: var(--accent-green); background: rgba(0,255,136,0.08); }
+
+        .table-scroll { overflow-x: auto; }
+
+        /* Filter row */
+        .filter-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-btn { padding: 5px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 500; cursor: pointer; background: var(--bg-card-hover); border: 1px solid var(--border-color); color: var(--text-secondary); font-family: 'Space Grotesk', sans-serif; }
+        .filter-btn:hover, .filter-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+
+        /* Availability calendar heat */
+        .avail-calendar { width: 100%; }
+        .avail-cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .avail-cal-title { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+        .avail-cal-nav { display: flex; gap: 4px; }
+        .avail-cal-nav button { background: var(--bg-card-hover); border: 1px solid var(--border-color); color: var(--text-secondary); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .avail-cal-nav button:hover { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+
+        .heat-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .heat-header { text-align: center; font-size: 0.58rem; color: var(--text-muted); text-transform: uppercase; padding: 4px 0; font-weight: 600; }
+        .heat-day { aspect-ratio: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; cursor: pointer; position: relative; transition: transform 0.1s; border: 1px solid transparent; }
+        .heat-day:hover { transform: scale(1.15); z-index: 2; }
+        .heat-day.empty { background: transparent; cursor: default; }
+        .heat-day.heat-0 { background: var(--bg-card-hover); color: var(--text-muted); }
+        .heat-day.heat-1 { background: rgba(0,212,255,0.15); color: var(--accent-cyan); }
+        .heat-day.heat-2 { background: rgba(0,212,255,0.30); color: var(--accent-cyan); }
+        .heat-day.heat-3 { background: rgba(0,255,136,0.30); color: var(--accent-green); border-color: rgba(0,255,136,0.4); }
+        .heat-day.heat-4 { background: rgba(0,255,136,0.55); color: var(--bg-dark); border-color: var(--accent-green); font-weight: 700; }
+        .heat-day.heat-5 { background: var(--accent-green); color: var(--bg-dark); font-weight: 700; border-color: var(--accent-green); }
+        .heat-day.past { opacity: 0.35; cursor: default; }
+        .heat-day.today { border-color: var(--accent-cyan) !important; }
+        .heat-day.other-month { opacity: 0.2; }
+
+        .heat-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 0.72rem; white-space: nowrap; z-index: 10; color: var(--text-primary); pointer-events: none; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .heat-day:hover .heat-tooltip { display: block; }
+
+        .heat-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 0.7rem; color: var(--text-muted); }
+        .heat-legend-bar { display: flex; gap: 2px; }
+        .heat-legend-cell { width: 14px; height: 14px; border-radius: 3px; }
+
+        /* Upcoming panel */
+        .upcoming-item { background: var(--bg-card-hover); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .upcoming-date { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent-cyan); white-space: nowrap; }
+        .upcoming-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 2px; }
+        .upcoming-meta { font-size: 0.75rem; color: var(--text-secondary); }
+        .dsps-list { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; max-width: 520px; width: 90%; position: relative; animation: modalIn 0.2s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; }
+        .modal-close:hover { color: var(--text-primary); }
+        .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+        .modal-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; }
+        .modal-section { margin-bottom: 16px; }
+        .modal-section h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+        .modal-dates { display: flex; flex-wrap: wrap; gap: 6px; }
+        .modal-date-pick { font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; padding: 5px 12px; border-radius: 6px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+        .modal-date-pick:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+        .modal-date-pick.chosen { background: rgba(0,255,136,0.15); border-color: var(--accent-green); color: var(--accent-green); }
+        .modal-note { width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; resize: vertical; min-height: 70px; margin-top: 8px; }
+        .modal-note:focus { outline: none; border-color: var(--accent-blue); }
+        .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+        .modal-btns .btn { flex: 1; padding: 10px; font-size: 0.88rem; }
+
+        @media (max-width: 900px) {
+            .coord-grid { grid-template-columns: 1fr; }
+            .kpi-row { grid-template-columns: repeat(3, 1fr); }
+            .form-row { grid-template-columns: 1fr; }
+            .pref-options { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 600px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .view-switcher { top: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+
+    <!-- View Switcher -->
+    <div class="view-switcher">
+        <button class="view-btn active" onclick="switchView('form', this)">📋 DSP Form</button>
+        <button class="view-btn" onclick="switchView('coord', this)">🗂 Internal View</button>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════
+         DSP FORM VIEW
+    ════════════════════════════════════════════════════ -->
+    <div class="view active" id="view-form">
+        <div class="form-view">
+            <div class="form-header">
+                <div class="form-logo">KOONER · LAST MILE</div>
+                <h1>Site Visit <span>Availability</span></h1>
+                <p>Help us schedule a time to visit your station. Select dates that work for your team and we'll reach out to confirm.</p>
+            </div>
+
+            <div class="form-card" id="formCard">
+                <form id="dspForm" onsubmit="handleFormSubmit(event)">
+                    <!-- DSP Info -->
+                    <div class="form-section">
+                        <div class="form-section-title">Your Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">DSP Code <span>*</span></label>
+                                <input class="form-input" id="f_dsp" placeholder="e.g. ARMA" required maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Station <span>*</span></label>
+                                <select class="form-select" id="f_station" required>
+                                    <option value="">Select station…</option>
+                                    <option>HMK4 – Milwaukee, WI</option>
+                                    <option>HSL1 – Salt Lake City, UT</option>
+                                    <option>HCT2 – Chattanooga, TN</option>
+                                    <option>HDY1 – Clayton, OH</option>
+                                    <option>HTP2 – Gibsonton, FL</option>
+                                    <option>HHO3 – Porter, TX</option>
+                                    <option>HMS2 – Lakeville, MN</option>
+                                    <option>HDT3 – Romulus, MI</option>
+                                    <option>HCL2 – Charlotte, NC</option>
+                                    <option>HIN3 – South Bend, IN</option>
+                                    <option>HLA2 – Santa Clarita, CA</option>
+                                    <option>HAU1 – Austin, TX</option>
+                                    <option>HPD1 – Portland, OR</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Your Name <span>*</span></label>
+                                <input class="form-input" id="f_name" placeholder="Full name" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email Address <span>*</span></label>
+                                <input class="form-input" id="f_email" type="email" placeholder="you@company.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone Number</label>
+                                <input class="form-input" id="f_phone" type="tel" placeholder="(555) 000-0000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Preferred Contact Method</label>
+                                <select class="form-select" id="f_contact">
+                                    <option value="email">Email</option>
+                                    <option value="phone">Phone call</option>
+                                    <option value="text">Text message</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Availability -->
+                    <div class="form-section">
+                        <div class="form-section-title">Select Available Dates</div>
+                        <div class="date-picker-area">
+                            <div class="mini-cal-nav">
+                                <button type="button" class="mini-cal-btn" onclick="formCalNav(-1)">‹</button>
+                                <span class="mini-cal-title" id="formCalTitle"></span>
+                                <button type="button" class="mini-cal-btn" onclick="formCalNav(1)">›</button>
+                            </div>
+                            <div class="mini-cal-grid" id="formCalGrid"></div>
+                            <div class="selected-dates">
+                                <div class="selected-dates-label">Selected dates <span id="dateCount" style="color:var(--accent-cyan)"></span></div>
+                                <div class="selected-dates-chips" id="selectedChips">
+                                    <span class="date-placeholder">Click dates above to add availability</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div class="form-section">
+                        <div class="form-section-title">Visit Preferences</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Preferred Time of Day</label>
+                                <select class="form-select" id="f_timeofday">
+                                    <option value="morning">Morning (7 AM – 12 PM)</option>
+                                    <option value="afternoon">Afternoon (12 PM – 5 PM)</option>
+                                    <option value="any">No preference</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Estimated Visit Duration</label>
+                                <select class="form-select" id="f_duration">
+                                    <option value="1hr">~1 hour</option>
+                                    <option value="2hr">~2 hours</option>
+                                    <option value="halfday">Half day</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:12px">
+                            <label class="form-label" style="margin-bottom:8px">Who should be present? (select all that apply)</label>
+                            <div class="pref-options" id="attendeeOptions">
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="dispatcher">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">Dispatcher</span>
+                                </label>
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="fleet_manager">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">Fleet Manager</span>
+                                </label>
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="owner">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">DSP Owner</span>
+                                </label>
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="ops_manager">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">Ops Manager</span>
+                                </label>
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="maintenance">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">Maintenance Lead</span>
+                                </label>
+                                <label class="pref-toggle" onclick="togglePref(this)">
+                                    <input type="checkbox" name="attendees" value="drivers">
+                                    <div class="pref-toggle-dot"></div>
+                                    <span class="pref-toggle-label">Drivers</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-section">
+                        <div class="form-section-title">Additional Notes</div>
+                        <div class="form-group">
+                            <label class="form-label">Any specific topics you'd like to cover or concerns to address?</label>
+                            <textarea class="form-textarea" id="f_notes" placeholder="e.g. We'd like to discuss turnaround times, parts availability, and our upcoming fleet expansion..."></textarea>
+                        </div>
+                        <div class="form-group" style="margin-top:12px">
+                            <label class="form-label">Any dates or times that are blackout periods? (busy seasons, events)</label>
+                            <textarea class="form-textarea" id="f_blackouts" placeholder="e.g. March 15–22 is our peak delivery season..." style="min-height:60px"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="form-submit">Submit Availability →</button>
+                </form>
+
+                <div class="success-state" id="successState">
+                    <div class="success-icon">✅</div>
+                    <h2>Thank you!</h2>
+                    <p>Your availability has been submitted. Brooke from Kooner will reach out within 1–2 business days to confirm your site visit date.</p>
+                    <button class="btn btn-outline" style="margin-top:20px" onclick="resetForm()">Submit another response</button>
+                </div>
+
+                <div id="notConfiguredMsg" style="display:none;text-align:center;padding:40px 20px;">
+                    <div style="font-size:2rem;margin-bottom:12px">⚙️</div>
+                    <h2 style="color:var(--accent-orange);margin-bottom:8px">Setup Required</h2>
+                    <p style="color:var(--text-secondary);font-size:0.95rem">The Google Sheets connection hasn't been configured yet. Please add the Apps Script Web App URL to the SHEET_URL variable in this file before sharing with DSPs.</p>
+                    <button class="btn btn-outline" style="margin-top:20px" onclick="resetForm()">Back to Form</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════
+         INTERNAL COORDINATOR VIEW
+    ════════════════════════════════════════════════════ -->
+    <div class="view" id="view-coord">
+        <div class="coord-view">
+            <div class="coord-header">
+                <div>
+                    <h1>Site Visit Coordinator</h1>
+                    <div class="coord-subtitle">DSP availability responses · Internal scheduling · Live from Google Sheets</div>
+                </div>
+                <div class="coord-actions">
+                    <button class="btn btn-outline" onclick="refreshData()">↻ Refresh</button>
+                    <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+                    <button class="btn btn-primary" onclick="switchView('form', document.querySelectorAll('.view-btn')[0])">+ Add Manual Response</button>
+                </div>
+            </div>
+
+            <!-- Setup banner — shown when SHEET_URL not configured -->
+            <div id="setupBanner" style="display:none;align-items:flex-start;gap:16px;background:rgba(255,165,2,0.08);border:1px solid var(--accent-orange);border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+                <div style="font-size:1.4rem;flex-shrink:0">⚙️</div>
+                <div>
+                    <div style="font-weight:600;color:var(--accent-orange);margin-bottom:6px">Google Sheets not connected yet</div>
+                    <div style="font-size:0.88rem;color:var(--text-secondary);line-height:1.6">Paste your Apps Script Web App URL into the <code style="background:var(--bg-dark);padding:2px 6px;border-radius:4px;color:var(--accent-cyan)">SHEET_URL</code> variable at the top of the &lt;script&gt; block in this file. See <strong>kooner_apps_script.gs</strong> for full setup instructions — takes about 3 minutes.</div>
+                </div>
+            </div>
+
+            <!-- Loading indicator -->
+            <div id="loadingIndicator" style="display:none;align-items:center;gap:12px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;margin-bottom:20px;">
+                <div style="width:18px;height:18px;border:2px solid var(--accent-blue);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0"></div>
+                <span style="font-size:0.9rem;color:var(--text-secondary)">Loading responses from Google Sheets…</span>
+            </div>
+            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+            <div class="kpi-row">
+                <div class="kpi-card blue"><div class="kpi-label">Total Responses</div><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-sub">DSPs responded</div></div>
+                <div class="kpi-card orange"><div class="kpi-label">Pending Schedule</div><div class="kpi-value" id="kpiPending">—</div><div class="kpi-sub">Awaiting confirmation</div></div>
+                <div class="kpi-card green"><div class="kpi-label">Scheduled</div><div class="kpi-value" id="kpiScheduled">—</div><div class="kpi-sub">Visits confirmed</div></div>
+                <div class="kpi-card cyan"><div class="kpi-label">Stations Covered</div><div class="kpi-value" id="kpiStations">—</div><div class="kpi-sub">Unique stations</div></div>
+                <div class="kpi-card yellow"><div class="kpi-label">Hottest Date</div><div class="kpi-value" id="kpiHotDate" style="font-size:1.1rem;margin-top:4px">—</div><div class="kpi-sub">Most available</div></div>
+            </div>
+
+            <div class="coord-grid">
+                <!-- Main response table -->
+                <div>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">DSP Availability Responses</div>
+                            <span class="card-badge badge-blue" id="responseCount">0 responses</span>
+                        </div>
+                        <div class="filter-row">
+                            <button class="filter-btn active" onclick="filterResponses('all', this)">All</button>
+                            <button class="filter-btn" onclick="filterResponses('pending', this)">Pending</button>
+                            <button class="filter-btn" onclick="filterResponses('scheduled', this)">Scheduled</button>
+                            <button class="filter-btn" onclick="filterResponses('needs-followup', this)">Needs Follow-up</button>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="response-table">
+                                <thead>
+                                    <tr>
+                                        <th>DSP</th>
+                                        <th>Station</th>
+                                        <th>Contact</th>
+                                        <th>Submitted</th>
+                                        <th>Available Dates</th>
+                                        <th>Preferences</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="responseTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div style="display:flex;flex-direction:column;gap:20px">
+                    <!-- Availability Heatmap -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Availability Heatmap</div>
+                            <div class="avail-cal-nav">
+                                <button onclick="heatCalNav(-1)">‹</button>
+                                <button onclick="heatCalNav(1)">›</button>
+                            </div>
+                        </div>
+                        <div class="avail-cal-title" id="heatCalTitle" style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:var(--text-secondary);margin-bottom:10px"></div>
+                        <div class="heat-grid" id="heatGrid"></div>
+                        <div class="heat-legend" style="margin-top:10px">
+                            <span style="font-size:0.68rem">Fewer</span>
+                            <div class="heat-legend-bar">
+                                <div class="heat-legend-cell heat-0 heat-day" style="width:14px;height:14px;display:block"></div>
+                                <div class="heat-legend-cell heat-1 heat-day" style="width:14px;height:14px;display:block"></div>
+                                <div class="heat-legend-cell heat-2 heat-day" style="width:14px;height:14px;display:block"></div>
+                                <div class="heat-legend-cell heat-3 heat-day" style="width:14px;height:14px;display:block"></div>
+                                <div class="heat-legend-cell heat-5 heat-day" style="width:14px;height:14px;display:block"></div>
+                            </div>
+                            <span style="font-size:0.68rem">More</span>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming visits -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Confirmed Visits</div>
+                            <span class="card-badge badge-green" id="confirmedBadge">0</span>
+                        </div>
+                        <div id="confirmedList"><p style="font-size:0.82rem;color:var(--text-muted);font-style:italic">No visits confirmed yet</p></div>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="card">
+                        <div class="card-title" style="margin-bottom:12px">Priority Outreach</div>
+                        <div id="priorityList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div class="modal-overlay" id="scheduleModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeScheduleModal()">×</button>
+            <div class="modal-title" id="schedModalTitle">Schedule Site Visit</div>
+            <div class="modal-subtitle" id="schedModalSub"></div>
+            <div class="modal-section">
+                <h4>Pick a Confirmed Date</h4>
+                <div class="modal-dates" id="schedModalDates"></div>
+            </div>
+            <div class="modal-section">
+                <h4>Internal Notes</h4>
+                <textarea class="modal-note" id="schedModalNote" placeholder="Confirm agenda, who's attending, any prep needed..."></textarea>
+            </div>
+            <div class="modal-btns">
+                <button class="btn btn-outline" onclick="closeScheduleModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmSchedule()">✓ Confirm Visit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ══════════════════════════════════════════════════════════════════
+    // CONFIGURATION — paste your Apps Script Web App URL here after deploying
+    // ══════════════════════════════════════════════════════════════════
+    var SHEET_URL = 'https://script.google.com/macros/s/AKfycbxDHMk3WawbUXx0az3LufxFZrIDz_vKDteqgQQl-tSRAc9QuT4kvEBdkZGQzl5bhbzK-Q/exec';
+    // ══════════════════════════════════════════════════════════════════
+
+    var CONFIGURED = SHEET_URL !== 'PASTE_YOUR_WEB_APP_URL_HERE';
+
+    // ── State
+    var responses = [];
+    var formSelectedDates = [];
+    var formCalMonth = new Date().getMonth();
+    var formCalYear = new Date().getFullYear();
+    var heatCalMonth = new Date().getMonth();
+    var heatCalYear = new Date().getFullYear();
+    var activeFilter = 'all';
+    var schedulingId = null;
+    var schedulingChosenDate = null;
+    var isLoading = false;
+
+    var MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // ── Google Sheets API calls
+    function sheetsGet(params, callback) {
+        if (!CONFIGURED) { callback([]); return; }
+        var url = SHEET_URL + '?action=' + (params.action || 'getAll');
+        fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(data){ callback(data.responses || []); })
+            .catch(function(e){ console.error('Sheets GET error:', e); callback([]); });
+    }
+
+    function sheetsPost(payload, callback) {
+        if (!CONFIGURED) { if(callback) callback({success:false,error:'Not configured'}); return; }
+        fetch(SHEET_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(payload)
+        })
+        .then(function() {
+            // no-cors returns opaque response — treat completion as success
+            if(callback) callback({success:true});
+        })
+        .catch(function(e) {
+            console.error('Sheets POST error:', e);
+            if(callback) callback({success:false});
+        });
+    }
+
+    // ── Load responses from Google Sheets
+    function loadResponses(onDone) {
+        if (!CONFIGURED) {
+            showSetupBanner();
+            if (onDone) onDone();
+            return;
+        }
+        setLoadingState(true);
+        sheetsGet({ action: 'getAll' }, function(data) {
+            responses = data;
+            setLoadingState(false);
+            if (onDone) onDone();
+        });
+    }
+
+    function setLoadingState(loading) {
+        isLoading = loading;
+        var el = document.getElementById('loadingIndicator');
+        if (el) el.style.display = loading ? 'flex' : 'none';
+    }
+
+    function showSetupBanner() {
+        var el = document.getElementById('setupBanner');
+        if (el) el.style.display = 'flex';
+    }
+
+    // saveResponses is now a no-op — Sheets is the source of truth
+    function saveResponses() {}
+
+    // ── View switching
+    function switchView(id, btn) {
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+        document.querySelectorAll('.view-btn').forEach(function(b){ b.classList.remove('active'); });
+        document.getElementById('view-' + id).classList.add('active');
+        btn.classList.add('active');
+        if (id === 'coord') renderCoord();
+    }
+
+    // ── FORM CALENDAR ─────────────────────────────────────────────────
+    function formCalNav(d) {
+        formCalMonth += d;
+        if (formCalMonth > 11) { formCalMonth = 0; formCalYear++; }
+        if (formCalMonth < 0) { formCalMonth = 11; formCalYear--; }
+        renderFormCal();
+    }
+
+    function renderFormCal() {
+        document.getElementById('formCalTitle').textContent = MONTH_NAMES[formCalMonth] + ' ' + formCalYear;
+        var grid = document.getElementById('formCalGrid');
+        var h = '';
+        var days = ['S','M','T','W','T','F','S'];
+        for (var i = 0; i < 7; i++) h += '<div class="mini-cal-header">' + days[i] + '</div>';
+        var firstDay = new Date(formCalYear, formCalMonth, 1).getDay();
+        var daysInMonth = new Date(formCalYear, formCalMonth + 1, 0).getDate();
+        var today = new Date(); today.setHours(0,0,0,0);
+        for (var i = 0; i < firstDay; i++) h += '<div class="mini-cal-day other-month"></div>';
+        for (var d = 1; d <= daysInMonth; d++) {
+            var mm = (formCalMonth+1 < 10 ? '0' : '') + (formCalMonth+1);
+            var dd = (d < 10 ? '0' : '') + d;
+            var ds = formCalYear + '-' + mm + '-' + dd;
+            var dt = new Date(formCalYear, formCalMonth, d);
+            var isPast = dt < today;
+            var isSel = formSelectedDates.indexOf(ds) !== -1;
+            var cls = 'mini-cal-day';
+            if (isPast) cls += ' past';
+            else if (isSel) cls += ' selected';
+            else if (dt.getTime() === today.getTime()) cls += ' today';
+            h += '<div class="' + cls + '" ' + (!isPast ? 'onclick="toggleFormDate(\'' + ds + '\')"' : '') + '>' + d + '</div>';
+        }
+        grid.innerHTML = h;
+    }
+
+    function toggleFormDate(ds) {
+        var idx = formSelectedDates.indexOf(ds);
+        if (idx === -1) formSelectedDates.push(ds);
+        else formSelectedDates.splice(idx, 1);
+        formSelectedDates.sort();
+        renderFormCal();
+        renderFormChips();
+    }
+
+    function renderFormChips() {
+        var c = document.getElementById('selectedChips');
+        document.getElementById('dateCount').textContent = formSelectedDates.length > 0 ? '(' + formSelectedDates.length + ')' : '';
+        if (formSelectedDates.length === 0) {
+            c.innerHTML = '<span class="date-placeholder">Click dates above to add availability</span>';
+            return;
+        }
+        var h = '';
+        for (var i = 0; i < formSelectedDates.length; i++) {
+            var ds = formSelectedDates[i];
+            var d = new Date(ds + 'T12:00:00');
+            var label = SHORT_MONTHS[d.getMonth()] + ' ' + d.getDate();
+            h += '<div class="date-chip">' + label + '<span class="date-chip-remove" onclick="toggleFormDate(\'' + ds + '\')">×</span></div>';
+        }
+        c.innerHTML = h;
+    }
+
+    // ── FORM TOGGLES
+    function togglePref(label) {
+        setTimeout(function() {
+            label.classList.toggle('checked', label.querySelector('input').checked);
+        }, 0);
+    }
+
+    // ── FORM SUBMIT
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        if (formSelectedDates.length === 0) { alert('Please select at least one available date.'); return; }
+        var attendees = [];
+        document.querySelectorAll('#attendeeOptions input:checked').forEach(function(cb){ attendees.push(cb.value); });
+        var rec = {
+            action: 'submit',
+            dsp: document.getElementById('f_dsp').value.trim(),
+            station: document.getElementById('f_station').value,
+            name: document.getElementById('f_name').value.trim(),
+            email: document.getElementById('f_email').value.trim(),
+            phone: document.getElementById('f_phone').value.trim(),
+            contact: document.getElementById('f_contact').value,
+            dates: formSelectedDates.slice(),
+            timeofday: document.getElementById('f_timeofday').value,
+            duration: document.getElementById('f_duration').value,
+            attendees: attendees,
+            notes: document.getElementById('f_notes').value.trim(),
+            blackouts: document.getElementById('f_blackouts').value.trim(),
+            submitted: new Date().toISOString().slice(0,10)
+        };
+
+        // Disable submit button while posting
+        var submitBtn = document.querySelector('.form-submit');
+        submitBtn.textContent = 'Submitting…';
+        submitBtn.disabled = true;
+
+        if (!CONFIGURED) {
+            // Not yet connected to Sheets — show setup message
+            document.getElementById('dspForm').style.display = 'none';
+            document.getElementById('notConfiguredMsg').style.display = 'block';
+            submitBtn.textContent = 'Submit Availability →';
+            submitBtn.disabled = false;
+            return;
+        }
+
+        sheetsPost(rec, function(result) {
+            submitBtn.textContent = 'Submit Availability →';
+            submitBtn.disabled = false;
+            if (result && result.success) {
+                document.getElementById('dspForm').style.display = 'none';
+                document.getElementById('successState').style.display = 'block';
+            } else {
+                alert('Something went wrong submitting. Please try again or contact Brooke directly.');
+            }
+        });
+    }
+
+    function resetForm() {
+        document.getElementById('dspForm').reset();
+        document.getElementById('dspForm').style.display = 'block';
+        document.getElementById('successState').style.display = 'none';
+        document.getElementById('notConfiguredMsg').style.display = 'none';
+        formSelectedDates = [];
+        renderFormCal();
+        renderFormChips();
+        document.querySelectorAll('.pref-toggle').forEach(function(l){ l.classList.remove('checked'); });
+    }
+
+    // ── COORDINATOR VIEW ─────────────────────────────────────────────
+    function renderCoord() {
+        renderKPIs();
+        renderResponseTable(activeFilter);
+        renderHeatmap();
+        renderConfirmed();
+        renderPriority();
+    }
+
+    function getFilteredResponses(filter) {
+        if (filter === 'all') return responses;
+        return responses.filter(function(r){ return r.status === filter; });
+    }
+
+    function filterResponses(f, btn) {
+        activeFilter = f;
+        document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        renderResponseTable(f);
+    }
+
+    function renderKPIs() {
+        var total = responses.length;
+        var pending = responses.filter(function(r){ return r.status === 'pending'; }).length;
+        var scheduled = responses.filter(function(r){ return r.status === 'scheduled'; }).length;
+        var stations = [...new Set(responses.map(function(r){ return r.station.split('–')[0].trim(); }))].length;
+
+        // Find hottest date
+        var dateCounts = {};
+        responses.forEach(function(r){
+            r.dates.forEach(function(d){
+                dateCounts[d] = (dateCounts[d] || 0) + 1;
+            });
+        });
+        var hotDate = '—', hotCount = 0;
+        Object.keys(dateCounts).forEach(function(d){
+            if (dateCounts[d] > hotCount) { hotCount = dateCounts[d]; hotDate = d; }
+        });
+        if (hotDate !== '—') {
+            var dt = new Date(hotDate + 'T12:00:00');
+            hotDate = SHORT_MONTHS[dt.getMonth()] + ' ' + dt.getDate();
+        }
+
+        document.getElementById('kpiTotal').textContent = total;
+        document.getElementById('kpiPending').textContent = pending;
+        document.getElementById('kpiScheduled').textContent = scheduled;
+        document.getElementById('kpiStations').textContent = stations;
+        document.getElementById('kpiHotDate').textContent = hotDate + (hotCount > 0 ? ' ×'+hotCount : '');
+        document.getElementById('responseCount').textContent = total + ' response' + (total !== 1 ? 's' : '');
+    }
+
+    var TIMELABELS = { morning: 'Morning', afternoon: 'Afternoon', any: 'Flexible' };
+    var DURLABELS = { '1hr': '1 hr', '2hr': '2 hrs', halfday: 'Half day' };
+    var ATTENDLABELS = { dispatcher:'Dispatcher', fleet_manager:'Fleet Mgr', owner:'Owner', ops_manager:'Ops Mgr', maintenance:'Maint. Lead', drivers:'Drivers' };
+    var CONTACTLABELS = { email:'Email', phone:'Phone', text:'Text' };
+
+    function fmtDate(ds) {
+        var d = new Date(ds + 'T12:00:00');
+        return SHORT_MONTHS[d.getMonth()] + ' ' + d.getDate();
+    }
+
+    function renderResponseTable(filter) {
+        var data = getFilteredResponses(filter);
+        var h = '';
+        if (data.length === 0) {
+            h = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px;font-style:italic">No responses match this filter</td></tr>';
+        } else {
+            data.forEach(function(r) {
+                var stCode = r.station.split('–')[0].trim();
+                var datesHtml = r.dates.slice(0, 4).map(function(d){ return '<span class="avail-chip available">' + fmtDate(d) + '</span>'; }).join('');
+                if (r.dates.length > 4) datesHtml += '<span style="font-size:0.7rem;color:var(--text-muted)">+' + (r.dates.length - 4) + ' more</span>';
+                var prefs = [];
+                if (r.timeofday) prefs.push(TIMELABELS[r.timeofday] || r.timeofday);
+                if (r.duration) prefs.push(DURLABELS[r.duration] || r.duration);
+                var prefsHtml = '<div style="font-size:0.75rem;color:var(--text-secondary)">' + prefs.join(' · ') + '</div>';
+                if (r.attendees && r.attendees.length > 0) {
+                    prefsHtml += '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px">' + r.attendees.map(function(a){ return ATTENDLABELS[a]||a; }).join(', ') + '</div>';
+                }
+                var statusHtml = '<span class="status-pill ' + r.status + '"><span class="status-dot"></span>' + (r.status === 'needs-followup' ? 'Follow-up' : r.status.charAt(0).toUpperCase() + r.status.slice(1)) + '</span>';
+                var actionHtml = r.status === 'scheduled'
+                    ? '<button class="action-btn" onclick="openScheduleModal(\'' + r.id + '\')">View</button>'
+                    : '<button class="action-btn schedule" onclick="openScheduleModal(\'' + r.id + '\')">Schedule</button>';
+                h += '<tr>';
+                h += '<td><div class="dsp-code">' + r.dsp + '</div><div style="font-size:0.72rem;color:var(--text-muted)">' + (CONTACTLABELS[r.contact]||r.contact) + '</div></td>';
+                h += '<td><span class="station-tag">' + stCode + '</span></td>';
+                h += '<td><div style="font-size:0.85rem">' + r.name + '</div><div style="font-size:0.72rem;color:var(--text-muted)">' + r.email + '</div></td>';
+                h += '<td style="font-size:0.78rem;color:var(--text-muted);font-family:\'JetBrains Mono\',monospace">' + r.submitted + '</td>';
+                h += '<td><div class="availability-chips">' + datesHtml + '</div></td>';
+                h += '<td>' + prefsHtml + '</td>';
+                h += '<td>' + statusHtml + '</td>';
+                h += '<td>' + actionHtml + '</td>';
+                h += '</tr>';
+                if (r.notes || r.internal_note) {
+                    h += '<tr><td colspan="8" style="padding:0 10px 10px;"><div style="font-size:0.78rem;color:var(--text-secondary);background:var(--bg-dark);border-radius:6px;padding:8px 12px;">';
+                    if (r.notes) h += '<span style="color:var(--text-muted)">DSP note: </span>' + r.notes + ' ';
+                    if (r.internal_note) h += '<span style="color:var(--accent-orange)">🏷 Internal: </span><em>' + r.internal_note + '</em>';
+                    h += '</div></td></tr>';
+                }
+            });
+        }
+        document.getElementById('responseTableBody').innerHTML = h;
+    }
+
+    // ── HEATMAP
+    function heatCalNav(d) {
+        heatCalMonth += d;
+        if (heatCalMonth > 11) { heatCalMonth = 0; heatCalYear++; }
+        if (heatCalMonth < 0) { heatCalMonth = 11; heatCalYear--; }
+        renderHeatmap();
+    }
+
+    function renderHeatmap() {
+        document.getElementById('heatCalTitle').textContent = MONTH_NAMES[heatCalMonth] + ' ' + heatCalYear;
+        var dateCounts = {};
+        var dateDSPs = {};
+        responses.forEach(function(r){
+            r.dates.forEach(function(d){
+                dateCounts[d] = (dateCounts[d] || 0) + 1;
+                if (!dateDSPs[d]) dateDSPs[d] = [];
+                dateDSPs[d].push(r.dsp);
+            });
+        });
+        var maxCount = Math.max.apply(null, Object.values(dateCounts).concat([1]));
+
+        var grid = document.getElementById('heatGrid');
+        var h = '';
+        var days = ['S','M','T','W','T','F','S'];
+        for (var i = 0; i < 7; i++) h += '<div class="heat-header">' + days[i] + '</div>';
+        var firstDay = new Date(heatCalYear, heatCalMonth, 1).getDay();
+        var daysInMonth = new Date(heatCalYear, heatCalMonth + 1, 0).getDate();
+        var today = new Date(); today.setHours(0,0,0,0);
+        for (var i = 0; i < firstDay; i++) h += '<div class="heat-day empty"></div>';
+        for (var d = 1; d <= daysInMonth; d++) {
+            var mm = (heatCalMonth+1 < 10 ? '0' : '') + (heatCalMonth+1);
+            var dd2 = (d < 10 ? '0' : '') + d;
+            var ds = heatCalYear + '-' + mm + '-' + dd2;
+            var cnt = dateCounts[ds] || 0;
+            var dt2 = new Date(heatCalYear, heatCalMonth, d);
+            var isPast = dt2 < today;
+            var isToday = dt2.getTime() === today.getTime();
+            var heatLevel = cnt === 0 ? 0 : Math.max(1, Math.ceil(cnt / maxCount * 5));
+            var cls = 'heat-day heat-' + heatLevel + (isPast ? ' past' : '') + (isToday ? ' today' : '');
+            var tip = cnt > 0 ? cnt + ' DSP' + (cnt > 1 ? 's' : '') + ': ' + (dateDSPs[ds]||[]).join(', ') : 'No availability';
+            h += '<div class="' + cls + '">' + d + '<div class="heat-tooltip">' + fmtDate(ds) + '<br>' + tip + '</div></div>';
+        }
+        grid.innerHTML = h;
+    }
+
+    // ── CONFIRMED LIST
+    function renderConfirmed() {
+        var confirmed = responses.filter(function(r){ return r.status === 'scheduled' && r.scheduled_date; });
+        confirmed.sort(function(a,b){ return a.scheduled_date.localeCompare(b.scheduled_date); });
+        document.getElementById('confirmedBadge').textContent = confirmed.length;
+        var h = '';
+        confirmed.forEach(function(r){
+            h += '<div class="upcoming-item">';
+            h += '<div><div class="upcoming-name">' + r.dsp + '</div><div class="upcoming-meta">' + r.station + '</div><div class="dsps-list">' + (r.internal_note ? '🏷 ' + r.internal_note.slice(0,60) : '') + '</div></div>';
+            h += '<div class="upcoming-date">' + fmtDate(r.scheduled_date) + '</div>';
+            h += '</div>';
+        });
+        if (!h) h = '<p style="font-size:0.82rem;color:var(--text-muted);font-style:italic">No visits confirmed yet</p>';
+        document.getElementById('confirmedList').innerHTML = h;
+    }
+
+    // ── PRIORITY LIST (pending DSPs sorted by leakage relevance - HPD1, HLA2, HAU1 first)
+    var priorityStations = ['HPD1','HLA2','HAU1','HDT3','HCL2','HAU1'];
+    function renderPriority() {
+        var pending = responses.filter(function(r){ return r.status !== 'scheduled'; });
+        // sort: needs-followup first, then by station priority
+        pending.sort(function(a,b){
+            if (a.status === 'needs-followup' && b.status !== 'needs-followup') return -1;
+            if (b.status === 'needs-followup' && a.status !== 'needs-followup') return 1;
+            return 0;
+        });
+        var h = '';
+        pending.slice(0,4).forEach(function(r){
+            var stCode = r.station.split('–')[0].trim();
+            h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-color)">';
+            h += '<div><div style="font-weight:600;font-size:0.88rem">' + r.dsp + ' <span class="station-tag">' + stCode + '</span></div>';
+            h += '<div style="font-size:0.73rem;color:var(--text-muted);margin-top:2px">' + r.dates.length + ' dates · via ' + (CONTACTLABELS[r.contact]||r.contact) + '</div></div>';
+            h += '<button class="action-btn schedule" onclick="openScheduleModal(\'' + r.id + '\')">Schedule</button>';
+            h += '</div>';
+        });
+        if (!h) h = '<p style="font-size:0.82rem;color:var(--text-muted);font-style:italic">All caught up!</p>';
+        document.getElementById('priorityList').innerHTML = h;
+    }
+
+    // ── SCHEDULE MODAL
+    function openScheduleModal(id) {
+        schedulingId = id;
+        schedulingChosenDate = null;
+        var r = responses.find(function(x){ return x.id === id; });
+        if (!r) return;
+        document.getElementById('schedModalTitle').textContent = 'Site Visit – ' + r.dsp;
+        document.getElementById('schedModalSub').textContent = r.station + ' · ' + r.name + ' · ' + r.email;
+        document.getElementById('schedModalNote').value = r.internal_note || '';
+        var datesHtml = r.dates.map(function(d){
+            var chosen = r.scheduled_date === d ? ' chosen' : '';
+            return '<div class="modal-date-pick' + chosen + '" onclick="pickScheduleDate(\'' + d + '\', this)">' + fmtDate(d) + ' (' + new Date(d+'T12:00:00').toLocaleDateString('en',{weekday:'short'}) + ')</div>';
+        }).join('');
+        if (r.scheduled_date) schedulingChosenDate = r.scheduled_date;
+        document.getElementById('schedModalDates').innerHTML = datesHtml;
+        document.getElementById('scheduleModal').classList.add('active');
+    }
+
+    function pickScheduleDate(d, el) {
+        document.querySelectorAll('.modal-date-pick').forEach(function(x){ x.classList.remove('chosen'); });
+        el.classList.add('chosen');
+        schedulingChosenDate = d;
+    }
+
+    function confirmSchedule() {
+        if (!schedulingChosenDate) { alert('Please select a date to confirm.'); return; }
+        var r = responses.find(function(x){ return x.id === schedulingId; });
+        if (!r) return;
+
+        var btn = document.querySelector('#scheduleModal .btn-primary');
+        btn.textContent = 'Saving…';
+        btn.disabled = true;
+
+        var payload = {
+            action: 'updateStatus',
+            id: r.id,
+            status: 'scheduled',
+            scheduled_date: schedulingChosenDate,
+            internal_note: document.getElementById('schedModalNote').value.trim()
+        };
+
+        sheetsPost(payload, function(result) {
+            btn.textContent = '✓ Confirm Visit';
+            btn.disabled = false;
+            if (result && result.success) {
+                // Update local copy
+                r.status = 'scheduled';
+                r.scheduled_date = schedulingChosenDate;
+                r.internal_note = payload.internal_note;
+                closeScheduleModal();
+                renderCoord();
+            } else {
+                alert('Could not save to Google Sheets. Check your connection and try again.');
+            }
+        });
+    }
+
+    function closeScheduleModal() {
+        document.getElementById('scheduleModal').classList.remove('active');
+        schedulingId = null;
+        schedulingChosenDate = null;
+    }
+
+    // ── EXPORT CSV
+    function exportCSV() {
+        var cols = ['DSP','Station','Name','Email','Phone','Contact Method','Available Dates','Time Preference','Duration','Attendees','Notes','Blackouts','Status','Scheduled Date','Internal Note','Submitted'];
+        var rows = [cols.join(',')];
+        responses.forEach(function(r){
+            rows.push([
+                r.dsp, r.station, r.name, r.email, r.phone,
+                CONTACTLABELS[r.contact]||r.contact,
+                '"' + r.dates.join(', ') + '"',
+                TIMELABELS[r.timeofday]||r.timeofday,
+                DURLABELS[r.duration]||r.duration,
+                '"' + (r.attendees||[]).map(function(a){ return ATTENDLABELS[a]||a; }).join(', ') + '"',
+                '"' + (r.notes||'').replace(/"/g,'""') + '"',
+                '"' + (r.blackouts||'').replace(/"/g,'""') + '"',
+                r.status,
+                r.scheduled_date||'',
+                '"' + (r.internal_note||'').replace(/"/g,'""') + '"',
+                r.submitted
+            ].join(','));
+        });
+        var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'kooner_site_visit_availability_' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+    }
+
+    // ── View switching — reload from Sheets when switching to internal view
+    function switchView(id, btn) {
+        document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+        document.querySelectorAll('.view-btn').forEach(function(b){ b.classList.remove('active'); });
+        document.getElementById('view-' + id).classList.add('active');
+        btn.classList.add('active');
+        if (id === 'coord') {
+            loadResponses(function(){ renderCoord(); });
+        }
+    }
+
+    function refreshData() {
+        loadResponses(function(){ renderCoord(); });
+    }
+
+    // ── INIT
+    document.addEventListener('DOMContentLoaded', function() {
+        formCalMonth = 2; formCalYear = 2026;
+        heatCalMonth = 2; heatCalYear = 2026;
+        renderFormCal();
+        renderFormChips();
+        document.getElementById('scheduleModal').addEventListener('click', function(e){ if(e.target===this) closeScheduleModal(); });
+        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeScheduleModal(); });
+    });
+    </script>
+</body>
+</html>
