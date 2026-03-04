@@ -558,20 +558,39 @@
     <div class="modal-overlay" id="scheduleModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeScheduleModal()">×</button>
-            <div class="modal-title" id="schedModalTitle">Schedule Site Visit</div>
-            <div class="modal-subtitle" id="schedModalSub"></div>
-            <div class="modal-section">
-                <h4>Pick a Confirmed Date</h4>
-                <div class="modal-dates" id="schedModalDates"></div>
+
+            <!-- Step 1: Pick date + notes -->
+            <div id="schedStep1">
+                <div class="modal-title" id="schedModalTitle">Schedule Site Visit</div>
+                <div class="modal-subtitle" id="schedModalSub"></div>
+                <div class="modal-section">
+                    <h4>Pick a Confirmed Date</h4>
+                    <div class="modal-dates" id="schedModalDates"></div>
+                </div>
+                <div class="modal-section">
+                    <h4>Internal Notes</h4>
+                    <textarea class="modal-note" id="schedModalNote" placeholder="Confirm agenda, who's attending, any prep needed..."></textarea>
+                </div>
+                <div class="modal-btns">
+                    <button class="btn btn-outline" onclick="closeScheduleModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="goToConfirmStep()">Review & Confirm →</button>
+                </div>
             </div>
-            <div class="modal-section">
-                <h4>Internal Notes</h4>
-                <textarea class="modal-note" id="schedModalNote" placeholder="Confirm agenda, who's attending, any prep needed..."></textarea>
+
+            <!-- Step 2: Confirmation acknowledgement -->
+            <div id="schedStep2" style="display:none">
+                <div class="modal-title">Confirm Site Visit</div>
+                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:20px">Review the details below before adding to the Engagement Calendar.</div>
+                <div id="confirmSummary" style="background:#f9f9fc;border:1px solid var(--border-color);border-radius:12px;padding:20px;margin-bottom:20px"></div>
+                <div style="background:rgba(123,47,247,0.06);border:1px solid rgba(123,47,247,0.2);border-radius:10px;padding:14px;margin-bottom:20px;font-size:0.85rem;color:var(--text-secondary)">
+                    ✅ Clicking <strong>Add to Calendar</strong> will add this visit to the Engagement Calendar as a Site Visit event.
+                </div>
+                <div class="modal-btns">
+                    <button class="btn btn-outline" onclick="backToStep1()">← Edit</button>
+                    <button class="btn btn-primary" id="addToCalBtn" onclick="confirmSchedule()">📅 Add to Calendar</button>
+                </div>
             </div>
-            <div class="modal-btns">
-                <button class="btn btn-outline" onclick="closeScheduleModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmSchedule()">✓ Confirm Visit</button>
-            </div>
+
         </div>
     </div>
 
@@ -615,9 +634,13 @@
                 var responses = [];
                 for (var i = 1; i < rows.length; i++) {
                     var row = rows[i];
-                    if (!row[0]) continue;
+                    // Skip empty rows or rows missing both ID and DSP
+                    if (!row[0] || !row[0].trim()) continue;
+                    if (row.every(function(cell){ return !cell || !cell.trim(); })) continue;
                     var rec = {};
                     headers.forEach(function(h, idx) { rec[h] = row[idx] || ''; });
+                    // Must have a DSP to be a valid submission
+                    if (!rec['DSP'] || !rec['DSP'].trim()) continue;
                     var datesStr = rec['Available Dates'] || '';
                     rec.dates = datesStr ? datesStr.split(',').map(function(d){ return d.trim(); }).filter(Boolean) : [];
                     var attendStr = rec['Attendees'] || '';
@@ -916,9 +939,62 @@
     }
 
     var TIMELABELS = { morning: 'Morning', afternoon: 'Afternoon', any: 'Flexible' };
+    var TIMEMAP    = { morning: '9:00 AM', afternoon: '1:00 PM', any: '9:00 AM' };
     var DURLABELS = { '1hr': '1 hr', '2hr': '2 hrs', halfday: 'Half day' };
     var ATTENDLABELS = { dispatcher:'Dispatcher', fleet_manager:'Fleet Mgr', owner:'Owner', ops_manager:'Ops Mgr', maintenance:'Maint. Lead', drivers:'Drivers' };
     var CONTACTLABELS = { email:'Email', phone:'Phone', text:'Text' };
+    var CAL_STORAGE_KEY = 'kooner_calendar_confirmed_visits';
+
+    function goToConfirmStep() {
+        if (!schedulingChosenDate) { alert('Please select a date to confirm.'); return; }
+        var r = responses.find(function(x){ return x.id === schedulingId; });
+        if (!r) return;
+        var time = TIMEMAP[r.timeofday] || '9:00 AM';
+        var attendees = (r.attendees || []).map(function(a){ return ATTENDLABELS[a] || a; }).join(', ') || 'Not specified';
+        var note = document.getElementById('schedModalNote').value.trim();
+        var d = new Date(schedulingChosenDate + 'T12:00:00');
+        var dateLabel = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+        var h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">';
+        h += summaryRow('DSP', r.dsp);
+        h += summaryRow('Station', r.station);
+        h += summaryRow('Date', dateLabel);
+        h += summaryRow('Time', time);
+        h += summaryRow('Duration', DURLABELS[r.duration] || r.duration);
+        h += summaryRow('Contact', r.name + (r.email ? ' · ' + r.email : ''));
+        h += summaryRow('Attendees', attendees);
+        if (note) h += summaryRow('Notes', note);
+        h += '</div>';
+        document.getElementById('confirmSummary').innerHTML = h;
+        document.getElementById('schedStep1').style.display = 'none';
+        document.getElementById('schedStep2').style.display = 'block';
+    }
+
+    function summaryRow(label, value) {
+        return '<div style="margin-bottom:10px"><div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">' + label + '</div>' +
+               '<div style="font-size:0.88rem;color:var(--text-primary);font-weight:500">' + (value || '—') + '</div></div>';
+    }
+
+    function backToStep1() {
+        document.getElementById('schedStep2').style.display = 'none';
+        document.getElementById('schedStep1').style.display = 'block';
+    }
+
+    function addToEngagementCalendar(event) {
+        try {
+            var existing = JSON.parse(localStorage.getItem(CAL_STORAGE_KEY) || '[]');
+            existing = existing.filter(function(e){ return e.id !== event.id; });
+            existing.push(event);
+            localStorage.setItem(CAL_STORAGE_KEY, JSON.stringify(existing));
+        } catch(e) { console.error('Calendar storage error:', e); }
+    }
+
+    function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7b2ff7,#2563eb);color:white;padding:12px 24px;border-radius:24px;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15)';
+        document.body.appendChild(t);
+        setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity 0.4s'; setTimeout(function(){ t.remove(); }, 400); }, 3000);
+    }
 
     function fmtDate(ds) {
         var d = new Date(ds + 'T12:00:00');
@@ -1079,37 +1155,45 @@
         if (!schedulingChosenDate) { alert('Please select a date to confirm.'); return; }
         var r = responses.find(function(x){ return x.id === schedulingId; });
         if (!r) return;
-
-        var btn = document.querySelector('#scheduleModal .btn-primary');
+        var btn = document.getElementById('addToCalBtn');
         btn.textContent = 'Saving…';
         btn.disabled = true;
-
+        var note = document.getElementById('schedModalNote').value.trim();
+        var time = TIMEMAP[r.timeofday] || '9:00 AM';
+        var stCode = r.station.split('–')[0].trim();
         var payload = {
             action: 'updateStatus',
             id: r.id,
             status: 'scheduled',
             scheduled_date: schedulingChosenDate,
-            internal_note: document.getElementById('schedModalNote').value.trim()
+            internal_note: note
         };
-
         sheetsPost(payload, function(result) {
-            btn.textContent = '✓ Confirm Visit';
+            r.status = 'scheduled';
+            r.scheduled_date = schedulingChosenDate;
+            r.internal_note = note;
+            addToEngagementCalendar({
+                id: 'cv_' + r.id,
+                date: schedulingChosenDate,
+                title: r.dsp + ' Site Visit',
+                type: 'site-visit',
+                station: stCode,
+                time: time,
+                notes: note || '',
+                actions: []
+            });
+            btn.textContent = '📅 Add to Calendar';
             btn.disabled = false;
-            if (result && result.success) {
-                // Update local copy
-                r.status = 'scheduled';
-                r.scheduled_date = schedulingChosenDate;
-                r.internal_note = payload.internal_note;
-                closeScheduleModal();
-                renderCoord();
-            } else {
-                alert('Could not save to Google Sheets. Check your connection and try again.');
-            }
+            closeScheduleModal();
+            renderCoord();
+            showToast('✅ Visit added to Engagement Calendar!');
         });
     }
 
     function closeScheduleModal() {
         document.getElementById('scheduleModal').classList.remove('active');
+        document.getElementById('schedStep1').style.display = 'block';
+        document.getElementById('schedStep2').style.display = 'none';
         schedulingId = null;
         schedulingChosenDate = null;
     }
